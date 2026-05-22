@@ -17,12 +17,12 @@ def make_hash(password):
     return generate_password_hash(password, method="pbkdf2:sha256")
 
 def check_ping(host):
-    try:
-        import socket
-        socket.create_connection((host, 80), timeout=2)
-        return True
-    except Exception:
-        return False
+    result = subprocess.run(
+        ["ping", "-c", "1", "-W", "1", host],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    return result.returncode == 0
 
 def db():
     return sqlite3.connect("monitor.db")
@@ -255,8 +255,19 @@ def dashboard():
             is_online = True
             maintenance_count += 1
         else:
-            is_online = check_ping(system["ip"])
-            status = "Online" if is_online else "Offline"
+            conn = db()
+            c = conn.cursor()
+            c.execute("""
+                SELECT status FROM checks
+                WHERE ip=?
+                ORDER BY id DESC
+                LIMIT 1
+            """, (system["ip"],))
+            latest = c.fetchone()
+            conn.close()
+
+            status = latest[0] if latest else "Unknown"
+            is_online = status == "Online"
 
         log_check(system["name"], system["ip"], status)
 
@@ -586,39 +597,5 @@ def logout():
     session.clear()
     return redirect("/login")
 
-
-# =========================
-# 🔌 AGENT API (NEW)
-# =========================
-from flask import request
-
-@app.route("/api/update", methods=["POST"])
-def api_update():
-    data = request.json
-
-    name = data.get("name")
-    ip = data.get("ip")
-    status = data.get("status")
-
-    conn = db()
-    c = conn.cursor()
-
-    c.execute("""
-        INSERT INTO checks (name, ip, status, checked_at)
-        VALUES (?, ?, ?, datetime('now'))
-    """, (name, ip, status))
-
-    conn.commit()
-    conn.close()
-
-    return {"success": True}
-
-
-# =========================
-# 🚀 APP START
-# =========================
-import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="127.0.0.1", port=5050, debug=True)
