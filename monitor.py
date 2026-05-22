@@ -1,4 +1,27 @@
-from flask import Flask, render_template_string, request, redirect, session
+from flask import Flask, from flask import Flask, request
+app = Flask(__name__)
+
+# 👇 PASTE THIS BLOCK HERE
+@app.route("/api/update", methods=["POST"])
+def api_update():
+    data = request.get_json()
+
+    name = data.get("name")
+    ip = data.get("ip")
+    status = data.get("status")
+
+    conn = db()
+    c = conn.cursor()
+
+    c.execute("""
+        INSERT INTO checks (system_name, ip, status, checked_at)
+        VALUES (?, ?, ?, datetime('now'))
+    """, (name, ip, status))
+
+    conn.commit()
+    conn.close()
+
+    return {"message": "OK"}, 200render_template_string, request, redirect, session
 import subprocess
 import sqlite3
 from datetime import datetime
@@ -597,8 +620,5 @@ def logout():
     session.clear()
     return redirect("/login")
 
-import os
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="127.0.0.1", port=5050, debug=True)
