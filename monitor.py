@@ -586,6 +586,37 @@ def logout():
     session.clear()
     return redirect("/login")
 
+
+# =========================
+# 🔌 AGENT API (NEW)
+# =========================
+from flask import request
+
+@app.route("/api/update", methods=["POST"])
+def api_update():
+    data = request.json
+
+    name = data.get("name")
+    ip = data.get("ip")
+    status = data.get("status")
+
+    conn = db()
+    c = conn.cursor()
+
+    c.execute("""
+        INSERT INTO checks (name, ip, status, checked_at)
+        VALUES (?, ?, ?, datetime('now'))
+    """, (name, ip, status))
+
+    conn.commit()
+    conn.close()
+
+    return {"success": True}
+
+
+# =========================
+# 🚀 APP START
+# =========================
 import os
 
 if __name__ == "__main__":
