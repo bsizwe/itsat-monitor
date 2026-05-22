@@ -17,12 +17,12 @@ def make_hash(password):
     return generate_password_hash(password, method="pbkdf2:sha256")
 
 def check_ping(host):
-    result = subprocess.run(
-        ["ping", "-c", "1", "-W", "1", host],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-    return result.returncode == 0
+    try:
+        import socket
+        socket.create_connection((host, 80), timeout=2)
+        return True
+    except Exception:
+        return False
 
 def db():
     return sqlite3.connect("monitor.db")
